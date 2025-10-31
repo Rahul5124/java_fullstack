@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EatNow</title>
+    <link rel="icon" href="img/logo.png">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 15px 20px;
+            text-align: center;
+        }
+     
+        .form-container {
+            max-width: 400px;
+            margin: auto;
+            padding: 20px;
+            background-color: #fafafa;
+            border-radius: 8px;
+            margin-top: 130px;
+            animation: fadeIn 1s ease-in-out;
+        }
+        .form-container:hover{
+            box-shadow: 0 0 15px 5px darkgray;
+        }
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        input[type="text"], input[type="email"], input[type="password"], input[type="number"] {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 90%;
+            margin-left: 10px;
+        }
+        button:hover {
+            background-color: #555;
+        }
+       
+        
+    </style>
+</head>
+<body>
+
+
+<div class="container">
+
+    <!-- Registration Form -->
+    <div class="form-container" id="registerForm">
+        <h2>Register</h2>
+        <input type="text" id="name" placeholder="Name" required>
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button id="registerButton">Register</button>
+        <p>Already have an account? <a href="javascript:void(0)" onclick="toggleForm('login')">Login here</a></p>
+    </div>
+
+    <!-- Login Form -->
+    <div class="form-container" id="loginForm" style="display:none;">
+        <h2>Login</h2>
+        <input type="email" id="loginEmail" placeholder="Email" required>
+        <input type="password" id="loginPassword" placeholder="Password" required>
+        <button id="loginButton">Login</button>
+        <p>Don't have an account? <a href="javascript:void(0)" onclick="toggleForm('register')">Register here</a></p>
+    </div>
+
+    
+
+<script>
+    const apiUrl = 'http://localhost:5000'; // Change to your API URL
+
+    // Toggle between Register and Login Forms
+    function toggleForm(form) {
+        if (form === 'register') {
+            document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('loginForm').style.display = 'none';
+        } else {
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+        }
+    }
+
+
+    // Register User
+    document.getElementById('registerButton').addEventListener('click', async () => {
+        const name = document.getElementById('name').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const response = await fetch(` http://localhost:5000/api/auth/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name, email, password }),
+        });
+
+        const data = await response.json();
+        if (response.status === 201) {
+            alert(data.message);
+            toggleForm('login'); // Show login form after successful registration
+        } else {
+            alert(data.message);
+        }
+    
+            
+        } catch (error) {
+            console.error('Registration error:', error);
+                alert('An error occurred during registration.');
+        }
+    });
+
+
+    // Login User
+    document.getElementById('loginButton').addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+
+    try {
+        const response = await fetch("http://localhost:5000/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+        if (response.status === 200) {
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("user", JSON.stringify({ name: data.name, email: data.email })); // Store user info
+            alert("Login successful!");
+            window.location.href = "dashboard.html";
+        } else {
+            alert(data.message);
+        }
+    } catch (error) {
+        console.error("Login error:", error);
+        alert("An error occurred during login.");
+    }
+});
+
+    // Fetch and Display Food Menu
+    async function loadFoods() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('Please login to view the food menu.');
+            return;
+        }
+
+        const response = await fetch(`http://localhost:5000/api/food/`);
+        const foods = await response.json();
+        
+        const foodContainer = document.getElementById('foodContainer');
+        foodContainer.style.display = 'block';
+        foodContainer.innerHTML = '<h2>Food Menu</h2>'; // Reset content
+
+        foods.forEach(food => {
+            const foodItem = document.createElement('div');
+            foodItem.classList.add('food-item');
+            foodItem.innerHTML = `
+                <img src="${food.image}" alt="${food.name}">
+                <h3>${food.name}</h3>
+                <p>Price: $${food.price}</p>
+                <button onclick="placeOrder('${food._id}')">Order Now</button>
+            `;
+            foodContainer.appendChild(foodItem);
+        });
+
+        document.getElementById('searchBarContainer').style.display = 'block'; // Show the search bar
+    }
+
+    // Place Order
+    async function placeOrder(foodId) {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('Please login to place an order.');
+            return;
+        }
+
+        const response = await fetch(`${apiUrl}/order`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                user: 'userId',  // Replace with actual user ID if available
+                items: [{ food: foodId, quantity: 1 }],
+                total: 10, // Replace with actual total calculation
+            }),
+        });
+
+        const data = await response.json();
+        alert(data.message);
+    }
+
+    // Search Food by Name
+    document.getElementById('foodSearch').addEventListener('input', function() {
+        const searchQuery = this.value.toLowerCase();
+        const foodItems = document.querySelectorAll('.food-item');
+
+        foodItems.forEach(item => {
+            const name = item.querySelector('h3').innerText.toLowerCase();
+            if (name.includes(searchQuery)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
